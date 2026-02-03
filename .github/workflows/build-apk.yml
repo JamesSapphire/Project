@@ -1,0 +1,58 @@
+name: Build Android APK (Flutter)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Unzip sources
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          unzip -o simferopol_monuments_flutter_sources.zip -d extracted
+
+      - name: Create Flutter project skeleton
+        run: |
+          flutter --version
+          flutter create simferopol_monuments
+          rm -rf simferopol_monuments/lib
+          rm -rf simferopol_monuments/assets
+          rm -f  simferopol_monuments/pubspec.yaml
+
+      - name: Copy app code & assets
+        run: |
+          cp -r extracted/simferopol_monuments_app/lib simferopol_monuments/lib
+          cp -r extracted/simferopol_monuments_app/assets simferopol_monuments/assets
+          cp    extracted/simferopol_monuments_app/pubspec.yaml simferopol_monuments/pubspec.yaml
+
+      - name: Build APK (release)
+        working-directory: simferopol_monuments
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: simferopol_monuments/build/app/outputs/flutter-apk/app-release.apk
